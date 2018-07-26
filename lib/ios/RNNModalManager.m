@@ -13,16 +13,19 @@
 	return self;
 }
 
--(void)showModalAfterLoad:(NSDictionary*)notif {
-	UIViewController<RNNRootViewProtocol>* topVC = (UIViewController<RNNRootViewProtocol>*)[self topPresentedVC];
+-(void)showModal:(BOOL)animated {
+	UIViewController* topVC = [self topPresentedVC];
 	topVC.definesPresentationContext = YES;
-	RNNNavigationOptions* options = topVC.getLeafViewController.options;
-
-	if (options.animations.showModal.hasCustomAnimation) {
-		self.toVC.transitioningDelegate = topVC;
+	
+	if ([topVC conformsToProtocol:@protocol(RNNRootViewProtocol)]) {
+		UIViewController<RNNRootViewProtocol> *navigationTopVC = (UIViewController<RNNRootViewProtocol>*)topVC;
+		RNNNavigationOptions* options = navigationTopVC.getLeafViewController.options;
+		if (options.animations.showModal.hasCustomAnimation) {
+			self.toVC.transitioningDelegate = navigationTopVC;
+		}
 	}
 	
-	[topVC presentViewController:self.toVC animated:options.animations.showModal.enable completion:^{
+	[topVC presentViewController:self.toVC animated:animated completion:^{
 		if (_completionBlock) {
 			_completionBlock();
 			_completionBlock = nil;
@@ -31,7 +34,7 @@
 	}];
 }
 
--(void)showModal:(UIViewController *)viewController completion:(RNNTransitionCompletionBlock)completion {
+-(void)showModal:(UIViewController *)viewController animated:(BOOL)animated completion:(RNNTransitionCompletionBlock)completion {
 	self.toVC = (UIViewController<RNNRootViewProtocol>*)viewController;
 	RNNNavigationOptions* options = self.toVC.getLeafViewController.options;
 
@@ -44,10 +47,10 @@
     if ([self.toVC respondsToSelector:@selector(isCustomViewController)] &&
         [self.toVC.getLeafViewController isCustomViewController]
     ) {
-		[self showModalAfterLoad:nil];
+		[self showModal:animated];
 	} else {
 		[self.toVC.getLeafViewController waitForReactViewRender:options.animations.showModal.waitForRender perform:^{
-			[self showModalAfterLoad:nil];
+			[self showModal:animated];
 		}];
 	}
 }

@@ -1,55 +1,45 @@
 #import "RNNOverlayManager.h"
-#import "RNNErrorHandler.h"
 #import "RNNOverlayWindow.h"
 
-@implementation RNNOverlayManager {
-	NSMutableDictionary* _overlayDict;
-	RNNStore* _store;
-	RNNOverlayWindow *_overlayWindow;
-}
+@implementation RNNOverlayManager
 
-- (instancetype)initWithStore:(RNNStore *)store {
+- (instancetype)init {
 	self = [super init];
-	_overlayDict = [[NSMutableDictionary alloc] init];
-	_store = store;
+	_overlayWindows = [[NSMutableArray alloc] init];
 	return self;
 }
 
 #pragma mark - public
 
-- (void)showOverlay:(RNNRootViewController *)viewController completion:(RNNTransitionCompletionBlock)completion {
-	[self cacheOverlay:viewController];
-	_overlayWindow = [[RNNOverlayWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
-	[_overlayWindow setWindowLevel:UIWindowLevelNormal];
-	[_overlayWindow setRootViewController:viewController];
-	[_overlayWindow setHidden:NO];
-	
-	completion();
+- (void)showOverlay:(UIViewController *)viewController {
+	UIWindow* overlayWindow = [[RNNOverlayWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+	[_overlayWindows addObject:overlayWindow];
+	[overlayWindow setWindowLevel:UIWindowLevelNormal];
+	[overlayWindow setRootViewController:viewController];
+	[overlayWindow setHidden:NO];
 }
 
-- (void)dismissOverlay:(NSString*)componentId completion:(RNNTransitionCompletionBlock)completion rejection:(RNNTransitionRejectionBlock)reject {
-	RNNRootViewController* viewController = [_overlayDict objectForKey:componentId];
-	if (viewController) {
-		[self removeCachedOverlay:viewController];
-		completion();
-	} else {
-		[RNNErrorHandler reject:reject withErrorCode:1010 errorDescription:@"ComponentId not found"];
-	}
+- (void)dismissOverlay:(UIViewController*)viewController {
+	UIWindow* overlayWindow = [self findWindowByRootViewController:viewController];
+	[self detachOverlayWindow:overlayWindow];
 }
 
 #pragma mark - private
 
-- (void)cacheOverlay:(RNNRootViewController*)viewController {
-	[_overlayDict setObject:viewController forKey:viewController.componentId];
+- (void)detachOverlayWindow:(UIWindow *)overlayWindow {
+	[overlayWindow setHidden:YES];
+	[overlayWindow setRootViewController:nil];
+	[_overlayWindows removeObject:overlayWindow];
 }
 
-- (void)removeCachedOverlay:(RNNRootViewController*)viewController {
-	[_overlayWindow setRootViewController:nil];
-	[_overlayWindow resignKeyWindow];
-	_overlayWindow = nil;
+- (UIWindow *)findWindowByRootViewController:(UIViewController *)viewController {
+	for (UIWindow* window in _overlayWindows) {
+		if ([window.rootViewController isEqual:viewController]) {
+			return window;
+		}
+	}
 	
-	[_overlayDict removeObjectForKey:viewController.componentId];
-	[_store removeComponent:viewController.componentId];
+	return nil;
 }
 
 @end
